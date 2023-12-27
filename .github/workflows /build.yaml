@@ -26,3 +26,4 @@ jobs:
       - run: node insertTable.js
       - run: sleep 10
       - run: node server.js
+      - run: docker logs postgres
