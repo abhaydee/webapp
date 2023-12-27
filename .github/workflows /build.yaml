@@ -10,7 +10,6 @@ jobs:
           POSTGRES_PASSWORD: abhaydeshpande
           POSTGRES_USER: abhaydeshpande
           POSTGRES_DB: abhaydeshpande
-          POSTGRES_HOST: postgres
         options: >-
           --health-cmd pg_isready
           --health-interval 10s
