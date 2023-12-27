@@ -23,6 +23,7 @@ jobs:
       - run: npm --version
       - uses: actions/checkout@v3
       - run: npm install
-      - run : node createTable.js
-      - run : node insertTable.js
+      - run: node createTable.js
+      - run: node insertTable.js
+      - run: sleep 10
       - run: node server.js
