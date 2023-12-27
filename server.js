@@ -15,6 +15,7 @@ const databaseConnection = async () => {
     password: "abhaydeshpande",
     port: 5432,
   });
+  pool.options.host = "localhost";
 
   pool.on('error', (err, client) => {
     console.error('Unexpected error on idle client', err)
