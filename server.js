@@ -22,7 +22,9 @@ const databaseConnection = async () => {
   })
   
   pool.connect((err, client, done)=>{
-     if(err) throw err;
+     if(err) {
+        console.log("error connecting to the database", err)
+     };
      client.query('SELECT * from users',(err, res)=>{
             if(err){
                 console.log("fetching data error",err);
