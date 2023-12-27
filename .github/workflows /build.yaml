@@ -10,7 +10,7 @@ jobs:
           POSTGRES_PASSWORD: abhaydeshpande
           POSTGRES_USER: abhaydeshpande
           POSTGRES_DB: abhaydeshpande
-          POSTGRES_HOST: postgres
+          POSTGRES_HOST: localhost
         options: >-
           --health-cmd pg_isready
           --health-interval 10s
@@ -23,6 +23,7 @@ jobs:
       - run: npm --version
       - uses: actions/checkout@v3
       - run: npm install
-      - run : node createTable.js
-      - run : node insertTable.js
+      - run: node createTable.js
+      - run: node insertTable.js
+      - run: sleep 10
       - run: node server.js
