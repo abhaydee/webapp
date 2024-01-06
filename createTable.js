@@ -8,15 +8,14 @@ const pool = new Pool({
   port: 5432,
 });
 
-const createUserTableQuery = `
-  CREATE TABLE IF NOT EXISTS users (
-    userid SERIAL PRIMARY KEY,
-    username VARCHAR(255),
-    email VARCHAR(255),
-    password VARCHAR(255),
-    last_login TIMESTAMP,
-    created_on TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-  );
+export const createUserTableQuery = `
+  CREATE TABLE IF NOT EXISTS authusers (
+    email VARCHAR(255) UNIQUE NOT NULL PRIMARY KEY,
+    password VARCHAR(255) NOT NULL,
+    firstname VARCHAR(50) NOT NULL,
+    lastname VARCHAR(50) NOT NULL,
+    account_created TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    account_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL
 `;
 
 pool.query(createUserTableQuery)
