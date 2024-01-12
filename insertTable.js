@@ -9,11 +9,10 @@ const pool = new Pool({
 });
 
 const insertSampleDataQuery = `
-  INSERT INTO users (username, email, password, last_login)
+  INSERT INTO authusers (firstname,lastname, email, password, account_created, account_updated)
   VALUES
-    ('user1', 'user1@example.com', 'password1', NOW()),
-    ('user2', 'user2@example.com', 'password2', NOW()),
-    ('user3', 'user3@example.com', 'password3', NOW());
+    ('abhay@gmail.com', 'deshpande','abhay@example.com', 'password1', NOW(), NOW()),
+    ('nisha@gmail.com', 'gowda','nisha@example.com', 'password2', NOW(), NOW()),
 `;
 
 pool.query(insertSampleDataQuery)
