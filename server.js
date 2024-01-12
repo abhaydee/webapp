@@ -1,4 +1,5 @@
 var express = require("express");
+const { v4: uuidv4 } = require("uuid");
 var app = express();
 const nocache = require("nocache");
 const bcrypt = require("bcryptjs");
@@ -15,7 +16,7 @@ const { Client } = require("pg");
 const fs = require("fs");
 
 const result = [];
-let basicAuthToken="";
+let basicAuthToken = "";
 
 const createUserTableQuery = `
   CREATE TABLE IF NOT EXISTS authusers (
@@ -29,12 +30,14 @@ const createUserTableQuery = `
 
 const createAssignmentTableQuery = `
 CREATE TABLE assignments (
-    id SERIAL PRIMARY KEY,
+    id VARCHAR(255) PRIMARY KEY,
     name VARCHAR(255) NOT NULL,
     points INTEGER NOT NULL,
     num_of_attempts INTEGER NOT NULL,
     deadline TIMESTAMP NOT NULL,
-    email VARCHAR(255) REFERENCES authusers(email)
+    email VARCHAR(255) REFERENCES authusers(email),
+    account_created TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    account_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL
 );
 `;
 // const insertDataQuery = `
@@ -44,15 +47,15 @@ CREATE TABLE assignments (
 //   CSV HEADER;
 // `;
 const pool = new Pool({
-    user: "abhaydeshpande",
-    host: "localhost",
-    database: "abhaydeshpande",
-    password: "abhaydeshpande",
-    port: 5432,
-  });
+  user: "abhaydeshpande",
+  host: "localhost",
+  database: "abhaydeshpande",
+  password: "abhaydeshpande",
+  port: 5432,
+});
+
 let databaseStatus = 503;
 const databaseConnection = async () => {
-  
   pool.options.host = "localhost";
 
   pool.on("error", (err, client) => {
@@ -63,18 +66,18 @@ const databaseConnection = async () => {
   crudUserTable(pool);
   createAssignmentTable(pool);
 };
+
 const createAssignmentTable = (pool) => {
   pool.connect((err, client, done) => {
     if (err) {
-      console.log("error connecting to the database", err);
+      // console.log("error connecting to the database", err);
     } else {
       databaseStatus = 200;
-      client.query(createAssignmentTableQuery, (err, res)=>{
-        if(err){
-            console.log("cannot create assignment table", err)
-        }
-        else {
-            console.log("assignment table created", res)
+      client.query(createAssignmentTableQuery, (err, res) => {
+        if (err) {
+          // console.log("cannot create assignment table", err);
+        } else {
+          // console.log("assignment table created", res);
         }
       });
     }
@@ -82,44 +85,140 @@ const createAssignmentTable = (pool) => {
 };
 
 const authenticateUser = async (email, password) => {
-    //check for user existence
-    return new Promise((resolve, reject) => {
-        let authToken = "";
-        let selectUserDataQuery = `SELECT * from authusers WHERE email ='${email}'`;
-        pool.query(selectUserDataQuery, async (err, result) => {
-            if (err) {
-                console.log("user not found, go ahead and create a new user", err);
-                resolve("user not found");
-            } else {
-                console.log("we got the user", result.rows[0]);
-                const passwordMatch = bcrypt.compareSync(password, result.rows[0].password);
-                    if (!passwordMatch) {
-                        console.log("passwords don't match");
-                        resolve("password does not match");
-                    } else {
-                        authToken = 'Basic ' + Buffer.from(email + ':' + password).toString('base64');
-                        console.log("logging the auth token", authToken);
-                        basicAuthToken = authToken;
-                        resolve(authToken);
-                    }
-                
-            }
-        });
+  //check for user existence
+  return new Promise((resolve, reject) => {
+    let authToken = "";
+    let selectUserDataQuery = `SELECT * from authusers WHERE email ='${email}'`;
+    pool.query(selectUserDataQuery, async (err, result) => {
+      if (err) {
+        console.log("user not found, go ahead and create a new user", err);
+        resolve("user not found");
+      } else {
+        console.log("we got the user", result.rows[0]);
+        const passwordMatch = bcrypt.compareSync(
+          password,
+          result.rows[0].password
+        );
+        if (!passwordMatch) {
+          console.log("passwords don't match");
+          resolve("password does not match");
+        } else {
+          authToken =
+            "Basic " + Buffer.from(email + ":" + password).toString("base64");
+          console.log("logging the auth token", authToken);
+          basicAuthToken = authToken;
+          resolve(authToken);
+        }
+      }
     });
+  });
 };
 
-app.post("/login", async (req, res)=>{
-    console.log("req", req.body);
-    // Log the body separately if needed
-    const data = await authenticateUser(req.body.email, req.body.password)
-    console.log("data", data)
-    if(data.split(" ")[0] == "Basic"){
-        res.json({ success : true, message : basicAuthToken})
-    } else { 
-        res.json({success: false, message : "login failed"})
+app.post("/login", async (req, res) => {
+  console.log("req", req.body);
+  // Log the body separately if needed
+  const data = await authenticateUser(req.body.email, req.body.password);
+  console.log("data", data);
+  if (data.split(" ")[0] == "Basic") {
+    res.json({ success: true, message: basicAuthToken });
+  } else {
+    res.json({ success: false, message: "login failed" });
+  }
+  // Send a JSON response
+});
+
+const checkUsers = (email, password) => {
+  return new Promise((resolve, reject) => {
+    let authToken = "";
+    let selectUserDataQuery = `SELECT * from authusers WHERE email ='${email}'`;
+    pool.query(selectUserDataQuery, async (err, result) => {
+      if (err) {
+        console.log("user not found, go ahead and create a new user", err);
+        resolve("user not found");
+      } else {
+        console.log("we got the user", result.rows[0]);
+        const passwordMatch = bcrypt.compareSync(
+          password,
+          result.rows[0].password
+        );
+        if (!passwordMatch) {
+          console.log("passwords don't match");
+          resolve("password does not match, you dont have access");
+        } else {
+          resolve(result.rows[0].email);
+        }
+      }
+    });
+  });
+};
+
+const getAssignmentDetails = (pool, id) => {
+  let userDetails = {};
+  let selectUserDataQuery = `SELECT * FROM authusers WHERE id ='${id}'`;
+  pool.query(selectUserDataQuery, (err, userData) => {
+    if (err) {
+      console.error("Error querying user data", err);
+    } else {
+      const user = userData.rows[0];
+      console.log("Getting final data from table", user);
+      userDetails = user;
+      done();
     }
-    // Send a JSON response
-})
+  });
+  return userDetails;
+};
+
+app.get("/assignments", async (req, res) => {
+  console.log("loading assignments ");
+  res.json(await getAssignmentDetails(pool, req.params.id));
+});
+app.post("/assignments", async (req, res) => {
+  const authHeaders = req.headers.authorization;
+  const assignmentData = req.body;
+  // console.log("the token", authHeaders.split(" ")[1]);
+  const decode_base64 = Buffer.from(
+    authHeaders.split(" ")[1],
+    "base64"
+  ).toString("utf-8");
+  const data = await checkUsers(
+    decode_base64.split(":")[0],
+    decode_base64.split(":")[1]
+  );
+  if (data.includes("@")) {
+    // console.log("the assignment data", data)
+    var insertAssignmentQuery =
+      "INSERT INTO assignments (id, name, points, num_of_attempts, deadline, email, account_created, account_updated) VALUES ('" +
+      uuidv4() +
+      "', '" +
+      assignmentData.name +
+      "', '" +
+      assignmentData.points +
+      "', '" +
+      assignmentData.num_of_attempts +
+      "', '" +
+      assignmentData.deadline +
+      "', '" +
+      data +
+      "', '" +
+      new Date().toISOString() +
+      "', '" +
+      new Date().toISOString() +
+      "')";
+    pool.connect((err, client, done) => {
+      if (err) {
+        console.log("error connectiong", err);
+      } else {
+        client.query(insertAssignmentQuery, (err, insertedData) => {
+          if (err) {
+            // console.log("Cannot insert data into the assignment table", err);
+          } else {
+            getAssignmentDetails(pool, client, data);
+          }
+        });
+      }
+    });
+  }
+});
 
 const crudUserTable = (pool) => {
   pool.connect((err, client, done) => {
@@ -205,14 +304,6 @@ const crudUserTable = (pool) => {
                                   err
                                 );
                               } else {
-                                console.log(
-                                  "data successfully updated to the table",
-                                  res
-                                );
-                                console.log(
-                                  "userpassword : hash",
-                                  userItem.password + ":" + hash
-                                );
                                 bcrypt.compare(
                                   userItem.password,
                                   hash,
@@ -232,7 +323,7 @@ const crudUserTable = (pool) => {
                   });
                 });
               });
-            })
+            });
         }
       });
     }
